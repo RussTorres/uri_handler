@@ -25,7 +25,7 @@ test_file = b.deserialize(os.environ.get("UH_TEST_FILE", True))
 
 @pytest.fixture(scope="module")
 def s3_uri_fixture():
-    with mock_s3_base_uri() as uri:
+    with mock_s3_base_uri(include_query=False) as uri:
         yield uri
 
 
