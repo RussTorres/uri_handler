@@ -76,7 +76,9 @@ def listfiles_from_dir(d, full=True):
     for i in os.listdir(d):
         ifull = os.path.join(d, i)
         if os.path.isdir(i):
-            yield from listfiles_from_dir(ifull)
+            # yield from listfiles_from_dir(ifull)
+            for it in listfiles_from_dir(ifull):
+                yield it
         else:
             yield ifull
 
