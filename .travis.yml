@@ -4,3 +4,12 @@ python:
   - "2.7"
   - "3.6"
   - "3.7-dev"
+  - "3.8-dev"
+install:
+  - pip install codecov
+  - pip install -r requirements.txt
+  - pip install -r test_requirements.txt
+script:
+  python setup.py test
+after_success:
+  - codecov -t 49bda5c1-5415-4836-9ddf-00165c853924
