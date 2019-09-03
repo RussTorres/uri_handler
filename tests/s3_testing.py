@@ -16,7 +16,8 @@ from six.moves import urllib
 def modified_environment_variables(**kwargs):
     kwargc = copy.deepcopy(kwargs)
     old_envvars = {k: os.environ.get(k)
-                   for k in six.viewkeys(kwargc) & six.viewkeys(os.environ)}
+                   for k in six.viewkeys(kwargc) &
+                   six.viewkeys(dict(os.environ))}
     for k, v in kwargc.items():
         os.environ[k] = v
     yield

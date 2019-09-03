@@ -1,7 +1,11 @@
 """
 Drain the marsh
 """
+import collections
+
 import marshmallow
+
+import uri_handler.errors
 
 
 # TODO test timing on these w/ overpolulated dicts/toastedmarshmallow
@@ -27,9 +31,24 @@ s3session_schema = S3SessionSchema()
 s3resource_schema = S3ResourceSchema()
 
 
+def load_schema_dict(input_d, schema):
+    res = schema.dump({k: v[-1] for k, v in input_d.items()})
+    try:
+        if res.errors:
+            raise uri_handler.errors.UriHandlerException(
+                "Error parsing params {} with {}".format(
+                    input_d, schema))
+        else:
+            return res.data
+    except AttributeError:
+        return res
+
+
 def load_s3session_dict(input_d):
-    return s3session_schema.dump({k: v[-1] for k, v in input_d.items()})
+    return load_schema_dict(input_d, s3session_schema)
 
 
 def load_s3resource_dict(input_d):
-    return s3resource_schema.dump({k: v[-1] for k, v in input_d.items()})
+    return load_schema_dict(input_d, s3resource_schema)
+    # return dict(s3resource_schema.dump(
+    #     {k: v[-1] for k, v in input_d.items()}) or {})
