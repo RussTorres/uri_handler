@@ -3,3 +3,4 @@ decorator
 marshmallow
 six
 pathlib2 ; python_version<'3.0'
+boto3
