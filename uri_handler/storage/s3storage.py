@@ -10,6 +10,7 @@ from uri_handler.storage.marsh import (
     load_s3session_dict, load_s3resource_dict
 )
 from uri_handler.utils._compat import urllib
+import uri_handler.storage.custom_schemes
 
 default_config = botocore.config.Config()
 
@@ -44,9 +45,16 @@ def s3_readbytes_uri(uri, resource=None):
 def get_s3_session_resource_from_uri(uri, config=default_config):
     """generate s3 resource from custom uri string"""
     p = urllib.parse.urlparse(uri)
+
+    customschemeparams = uri_handler.storage.custom_schemes.custom_schemes.get(
+        p.scheme, {}).get("scheme_params", {})
     queryparams = urllib.parse.parse_qs(p.query)
-    sessionparams = load_s3session_dict(queryparams)
-    resourceparams = load_s3resource_dict(queryparams)
+
+    # query params overwrite custom scheme params
+    combined_params = dict(customschemeparams, **queryparams)
+
+    sessionparams = load_s3session_dict(combined_params)
+    resourceparams = load_s3resource_dict(combined_params)
 
     session = boto3.session.Session(**sessionparams)
     resource = session.resource('s3', config=config, **resourceparams)
@@ -89,7 +97,6 @@ def s3_validate_prefix(uri, resource=None, **kwargs):
 
 def get_canonical_uri(uri):
     bucket, path = parse_s3_uri(uri)
-    print(bucket, path)
     return "s3://{bucket}/{path}".format(bucket=bucket, path=path)
 
 

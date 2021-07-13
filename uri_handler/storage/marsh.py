@@ -32,7 +32,10 @@ s3resource_schema = S3ResourceSchema()
 
 
 def load_schema_dict(input_d, schema):
-    res = schema.dump({k: v[-1] for k, v in input_d.items()})
+    # read last item if given list
+    res = schema.dump({
+        k: (v[-1] if isinstance(v, list) else v)
+        for k, v in input_d.items()})
     try:
         if res.errors:
             raise uri_handler.errors.UriHandlerException(
