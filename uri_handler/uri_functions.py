@@ -1,5 +1,6 @@
-import decorator
+import contextlib
 import copy
+import decorator
 try:
     from inspect import getfullargspec
 except ImportError:
@@ -65,6 +66,16 @@ def uri_readbytes(uri, uh=None, **kwargs):
 @uri_func_to_uh
 def uri_list_uris(uri, uh=None, **kwargs):
     return uh.list_uris_prefix(uri)
+
+
+@contextlib.contextmanager
+@uri_func_to_uh
+def uri_smart_open(uri, *args, **kwargs):
+    # hack for python2 (anyone?)
+    uh = kwargs.pop("uh")
+
+    with uh.smart_open_uri(uri, *args, **kwargs) as so:
+        yield so
 
 
 __all__ = [
