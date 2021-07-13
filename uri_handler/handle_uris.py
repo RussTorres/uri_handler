@@ -4,6 +4,8 @@ from uri_handler.utils._compat import urllib
 from uri_handler.storage.filestorage import FileUriHandler
 from uri_handler.storage.s3storage import S3UriHandler
 
+import uri_handler.storage.custom_schemes
+
 
 scheme_uri_handler_classes = {
     "s3": S3UriHandler,
@@ -11,10 +13,18 @@ scheme_uri_handler_classes = {
     }
 
 
-def get_uri_handler(uri):
+def get_uri_base_scheme(uri):
     p = urllib.parse.urlparse(uri)
     try:
-        handler_class = scheme_uri_handler_classes[p.scheme]
+        return uri_handler.storage.custom_schemes.custom_schemes[
+            p.scheme]["base_scheme"]
+    except KeyError:
+        return p.scheme
+
+
+def get_uri_handler(uri):
+    try:
+        handler_class = scheme_uri_handler_classes[get_uri_base_scheme(uri)]
     except KeyError as e:
         raise UriHandlerException(
             "Unknown uri schema {}".format(
