@@ -5,12 +5,11 @@ import boto3
 import botocore.config
 from botocore.utils import fix_s3_host
 
+from uri_handler.storage.basestorage import BaseUriHandler
 from uri_handler.storage.marsh import (
     load_s3session_dict, load_s3resource_dict
 )
-from uri_handler.utils._compat import (
-    urllib,
-    pathlib)
+from uri_handler.utils._compat import urllib
 
 default_config = botocore.config.Config()
 
@@ -24,6 +23,7 @@ def parse_s3_uri(uri):
 
 
 def s3resource_writebytes(b, bucket, fn, resource=None):
+    # TODO make bucket work with object
     resource.Object(bucket, fn).put(Body=b)
 
 
@@ -87,7 +87,13 @@ def s3_validate_prefix(uri, resource=None, **kwargs):
         return False
 
 
-class S3UriHandler:
+def get_canonical_uri(uri):
+    bucket, path = parse_s3_uri(uri)
+    print(bucket, path)
+    return "s3://{bucket}/{path}".format(bucket=bucket, path=path)
+
+
+class S3UriHandler(BaseUriHandler):
     def save_bytes(self, b, uri):
         session, resource = get_s3_session_resource_from_uri(uri)
         s3resource_writebytes_uri(b, uri, resource=resource)
@@ -106,3 +112,16 @@ class S3UriHandler:
     def validate_prefix(self, uri_prefix, **kwargs):
         session, resource = get_s3_session_resource_from_uri(uri_prefix)
         return s3_validate_prefix(uri_prefix, resource=None)
+
+    def _smart_open_uri(self, uri, *args, **kwargs):
+        session, resource = get_s3_session_resource_from_uri(uri)
+        client = resource.meta.client
+        canonical_uri = get_canonical_uri(uri)
+
+        kwargs["transport_params"] = dict(
+            kwargs.get("transport_params", {}),
+            **{"client": client})
+
+        return super()._smart_open_uri(canonical_uri, *args, **kwargs)
+        # FIXME actually combine args
+        # super().smart_open_uri(canonical_uri, *args, client=client, **kwargs)
