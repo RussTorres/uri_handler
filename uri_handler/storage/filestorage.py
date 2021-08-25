@@ -6,6 +6,7 @@ import os
 
 import atomicwrites
 
+from uri_handler.storage.basestorage import BaseUriHandler
 from uri_handler.utils._compat import (
     urllib,
     pathlib)
@@ -113,7 +114,7 @@ def file_validate_prefix(uri, check_writable=True, **kwargs):
     return True
 
 
-class FileUriHandler:
+class FileUriHandler(BaseUriHandler):
     atomic = True
     make_outdir = True
     overwrite = True

@@ -5,12 +5,12 @@ import boto3
 import botocore.config
 from botocore.utils import fix_s3_host
 
+from uri_handler.storage.basestorage import BaseUriHandler
 from uri_handler.storage.marsh import (
     load_s3session_dict, load_s3resource_dict
 )
-from uri_handler.utils._compat import (
-    urllib,
-    pathlib)
+from uri_handler.utils._compat import urllib
+import uri_handler.storage.custom_schemes
 
 default_config = botocore.config.Config()
 
@@ -24,6 +24,7 @@ def parse_s3_uri(uri):
 
 
 def s3resource_writebytes(b, bucket, fn, resource=None):
+    # TODO make bucket work with object
     resource.Object(bucket, fn).put(Body=b)
 
 
@@ -44,9 +45,16 @@ def s3_readbytes_uri(uri, resource=None):
 def get_s3_session_resource_from_uri(uri, config=default_config):
     """generate s3 resource from custom uri string"""
     p = urllib.parse.urlparse(uri)
+
+    customschemeparams = uri_handler.storage.custom_schemes.custom_schemes.get(
+        p.scheme, {}).get("scheme_params", {})
     queryparams = urllib.parse.parse_qs(p.query)
-    sessionparams = load_s3session_dict(queryparams)
-    resourceparams = load_s3resource_dict(queryparams)
+
+    # query params overwrite custom scheme params
+    combined_params = dict(customschemeparams, **queryparams)
+
+    sessionparams = load_s3session_dict(combined_params)
+    resourceparams = load_s3resource_dict(combined_params)
 
     session = boto3.session.Session(**sessionparams)
     resource = session.resource('s3', config=config, **resourceparams)
@@ -87,7 +95,12 @@ def s3_validate_prefix(uri, resource=None, **kwargs):
         return False
 
 
-class S3UriHandler:
+def get_canonical_uri(uri):
+    bucket, path = parse_s3_uri(uri)
+    return "s3://{bucket}/{path}".format(bucket=bucket, path=path)
+
+
+class S3UriHandler(BaseUriHandler):
     def save_bytes(self, b, uri):
         session, resource = get_s3_session_resource_from_uri(uri)
         s3resource_writebytes_uri(b, uri, resource=resource)
@@ -106,3 +119,16 @@ class S3UriHandler:
     def validate_prefix(self, uri_prefix, **kwargs):
         session, resource = get_s3_session_resource_from_uri(uri_prefix)
         return s3_validate_prefix(uri_prefix, resource=None)
+
+    def _smart_open_uri(self, uri, *args, **kwargs):
+        session, resource = get_s3_session_resource_from_uri(uri)
+        client = resource.meta.client
+        canonical_uri = get_canonical_uri(uri)
+
+        kwargs["transport_params"] = dict(
+            kwargs.get("transport_params", {}),
+            **{"client": client})
+
+        return super()._smart_open_uri(canonical_uri, *args, **kwargs)
+        # FIXME actually combine args
+        # super().smart_open_uri(canonical_uri, *args, client=client, **kwargs)

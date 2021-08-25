@@ -7,26 +7,28 @@ import os
 
 from moto import mock_s3
 import boto3
-from botocore.utils import fix_s3_host
 import six
 from six.moves import urllib
 
 
 @contextlib.contextmanager
-def modified_environment_variables(**kwargs):
-    kwargc = copy.deepcopy(kwargs)
-    old_envvars = {k: os.environ.get(k)
-                   for k in six.viewkeys(kwargc) &
-                   six.viewkeys(dict(os.environ))}
-    for k, v in kwargc.items():
-        os.environ[k] = v
-    yield
-    for k, v in kwargc.items():
-        try:
-            oldv = old_envvars[k]
-            os.environ[k] = oldv
-        except KeyError as e:
-            del os.environ[k]
+def modified_environment_variables(modify_env=True, **kwargs):
+    if modify_env:
+        kwargc = copy.deepcopy(kwargs)
+        old_envvars = {k: os.environ.get(k)
+                       for k in six.viewkeys(kwargc) &
+                       six.viewkeys(dict(os.environ))}
+        for k, v in kwargc.items():
+            os.environ[k] = v
+        yield
+        for k, v in kwargc.items():
+            try:
+                oldv = old_envvars[k]
+                os.environ[k] = oldv
+            except KeyError:
+                del os.environ[k]
+    else:
+        yield
 
 
 @contextlib.contextmanager
@@ -46,15 +48,16 @@ def mock_s3_session_resource_bucket(
 @contextlib.contextmanager
 def mock_s3_base_uri(
         bucketname="testbucket", sessionparams={}, resourceparams={},
-        include_query=True):
+        include_query=True, access_string="testing", scheme="s3",
+        modify_env=True, return_params=False):
     envvars = {
-        "AWS_ACCESS_KEY_ID": "testing",
-        "AWS_SECRET_ACCESS_KEY": "testing",
-        "AWS_SECURITY_TOKEN": "testing",
-        "AWS_SESSION_TOKEN": "testing"
+        "AWS_ACCESS_KEY_ID": access_string,
+        "AWS_SECRET_ACCESS_KEY": access_string,
+        "AWS_SECURITY_TOKEN": access_string,
+        "AWS_SESSION_TOKEN": access_string
     }
 
-    with modified_environment_variables(**envvars):
+    with modified_environment_variables(modify_env=modify_env, **envvars):
         with mock_s3_session_resource_bucket(
                 bucketname, sessionparams, resourceparams) as (sess, res, b):
 
@@ -64,20 +67,23 @@ def mock_s3_base_uri(
             mymsgkey = "mytestmsg"
             buck.put_object(Key=mymsgkey, Body=mybucketmsg.encode("UTF-8"))
 
-            msg = res.Object(bucketname, mymsgkey).get()["Body"].read().decode("UTF-8")
+            msg = res.Object(bucketname, mymsgkey).get()["Body"].read().decode(
+                "UTF-8")
             assert msg == mybucketmsg
 
-            paramstring = (urllib.parse.urlencode({
-                "profile_name": sess.profile_name,
+            params = {
+                # "profile_name": sess.profile_name,
                 "region_name": res.meta.client.meta.region_name,
                 "endpoint_url": res.meta.client.meta.endpoint_url,
-            }) if include_query else '')
+                "aws_access_key_id": access_string,
+                "aws_secret_access_key": access_string
+            }
+            paramstring = (urllib.parse.urlencode(params)
+                           if include_query else '')
 
-            yield urllib.parse.urlunparse(urllib.parse.ParseResult(
-                "s3", b, "/", "", paramstring, ""))
+            uri = urllib.parse.urlunparse(urllib.parse.ParseResult(
+                scheme, b, "/", "", paramstring, ""))
 
-
-
-
+            yield (uri, params) if return_params else uri
 
 # instead of testing with parameters, maybe just test marshalling in here
