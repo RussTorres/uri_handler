@@ -72,7 +72,7 @@ def mock_s3_base_uri(
             assert msg == mybucketmsg
 
             params = {
-                "profile_name": sess.profile_name,
+                # "profile_name": sess.profile_name,
                 "region_name": res.meta.client.meta.region_name,
                 "endpoint_url": res.meta.client.meta.endpoint_url,
                 "aws_access_key_id": access_string,
