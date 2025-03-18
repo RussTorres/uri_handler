@@ -26,6 +26,6 @@ def temp_file_base_uri():
     with temporarydir_23() as td:
         # TODO do we want any permission specifications?  # noqa: s1135
         # TODO this is a todo
-        # TODO another one # noqa: s1135
-        # TODO yet another # noqa: s117
+        # TODO another one # noqa: S1135
+        # TODO yet another # noqa: S117
         yield pathlib.Path(td).as_uri()
