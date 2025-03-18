@@ -24,5 +24,5 @@ def temporarydir_23(*args, **kwargs):
 def temp_file_base_uri():
     # tempdirs in pytest are weird....
     with temporarydir_23() as td:
-        # TODO do we want any permission specifications?
+        # TODO do we want any permission specifications?  # noqa: s1135
         yield pathlib.Path(td).as_uri()
